@@ -44,16 +44,18 @@ func (v *tableView) setFilterFn(fn func(string)) {
 
 func (v *tableView) bindKeys() {
 	v.actions = keyActions{
-		tcell.KeyCtrlS:      newKeyAction("Save", v.saveCmd, true),
+		tcell.KeyCtrlS: newKeyAction("Save", v.saveCmd, true),
+
 		KeySlash:            newKeyAction("Filter Mode", v.activateCmd, false),
 		tcell.KeyEscape:     newKeyAction("Filter Reset", v.resetCmd, false),
 		tcell.KeyEnter:      newKeyAction("Filter", v.filterCmd, false),
 		tcell.KeyBackspace2: newKeyAction("Erase", v.eraseCmd, false),
 		tcell.KeyBackspace:  newKeyAction("Erase", v.eraseCmd, false),
 		tcell.KeyDelete:     newKeyAction("Erase", v.eraseCmd, false),
-		KeyShiftI:           newKeyAction("Invert", v.sortInvertCmd, false),
-		KeyShiftN:           newKeyAction("Sort Name", v.sortColCmd(0), true),
-		KeyShiftA:           newKeyAction("Sort Age", v.sortColCmd(-1), true),
+
+		KeyShiftI: newKeyAction("Invert", v.sortInvertCmd, false),
+		KeyShiftN: newKeyAction("Sort Name", v.sortColCmd(0), true),
+		KeyShiftA: newKeyAction("Sort Age", v.sortColCmd(-1), true),
 	}
 }
 
@@ -159,18 +161,13 @@ func (v *tableView) activateCmd(evt *tcell.EventKey) *tcell.EventKey {
 	return nil
 }
 
-// SetColorer sets up table row color management.
-func (v *tableView) setColorer(f colorerFn) {
-	v.colorerFn = f
-}
-
 func (v *tableView) refresh() {
 	v.update(v.data)
 }
 
-func (v *tableView) showNSBindings() {
+func (v *resTable) showNSBindings(h actionHandler) {
 	if isAllNamespace(v.currentNS) {
-		v.actions[KeyShiftP] = newKeyAction("Sort Namespace", v.sortColCmd(0), true)
+		v.actions[KeyShiftP] = newKeyAction("Sort Namespace", h, true)
 		return
 	}
 	delete(v.actions, KeyShiftP)
@@ -179,7 +176,7 @@ func (v *tableView) showNSBindings() {
 // Update table content
 func (v *tableView) update(data resource.TableData) {
 	v.currentNS, v.data = data.Namespace, data
-	v.showNSBindings()
+	v.showNSBindings(v.sortColCmd(0))
 	v.Clear()
 	v.resetTitle()
 

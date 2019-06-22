@@ -27,7 +27,6 @@ type (
 		cancelFn   context.CancelFunc
 		parentCtx  context.Context
 		path       *string
-		colorerFn  colorerFn
 		decorateFn decorateFn
 	}
 )
@@ -50,12 +49,6 @@ func (v *resourceView) init(ctx context.Context, ns string) {
 	var vctx context.Context
 	vctx, v.cancelFn = context.WithCancel(ctx)
 
-	colorer := defaultColorer
-	if v.colorerFn != nil {
-		colorer = v.colorerFn
-	}
-	v.masterPage().setColorer(colorer)
-
 	v.update(vctx)
 	v.app.clusterInfo().refresh()
 	v.refresh()
@@ -68,8 +61,7 @@ func (v *resourceView) init(ctx context.Context, ns string) {
 }
 
 func (v *resourceView) setColorerFn(f colorerFn) {
-	v.colorerFn = f
-	v.masterPage().setColorer(f)
+	v.masterPage().colorerFn = f
 }
 
 func (v *resourceView) setDecorateFn(f decorateFn) {

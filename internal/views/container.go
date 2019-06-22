@@ -27,7 +27,6 @@ func newContainerView(ns string, app *appView, list resource.List, path string, 
 	v.containerFn = v.selectedContainer
 	v.extraActionsFn = v.extraActions
 	v.enterFn = v.viewLogs
-	v.colorerFn = containerColorer
 	v.current = app.content.GetPrimitive("main").(igniter)
 	v.exitFn = exitFn
 
@@ -36,6 +35,7 @@ func newContainerView(ns string, app *appView, list resource.List, path string, 
 
 func (v *containerView) init(ctx context.Context, ns string) {
 	v.resourceView.init(ctx, ns)
+	v.masterPage().colorerFn = containerColorer
 }
 
 func (v *containerView) extraActions(aa keyActions) {
