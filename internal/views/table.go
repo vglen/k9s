@@ -38,10 +38,6 @@ func newTableView(app *appView, title string) *tableView {
 	return &v
 }
 
-func (v *tableView) setFilterFn(fn func(string)) {
-	v.filterFn = fn
-}
-
 func (v *tableView) bindKeys() {
 	v.actions = keyActions{
 		tcell.KeyCtrlS: newKeyAction("Save", v.saveCmd, true),
@@ -165,14 +161,6 @@ func (v *tableView) refresh() {
 	v.update(v.data)
 }
 
-func (v *resTable) showNSBindings(h actionHandler) {
-	if isAllNamespace(v.currentNS) {
-		v.actions[KeyShiftP] = newKeyAction("Sort Namespace", h, true)
-		return
-	}
-	delete(v.actions, KeyShiftP)
-}
-
 // Update table content
 func (v *tableView) update(data resource.TableData) {
 	v.currentNS, v.data = data.Namespace, data
@@ -293,11 +281,4 @@ func (v *tableView) filterAsStr() string {
 		cmd = trimLabelSelector(cmd)
 	}
 	return cmd
-}
-
-func isAllNamespace(ns string) bool {
-	if ns == resource.AllNamespace || ns == resource.AllNamespaces {
-		return true
-	}
-	return false
 }

@@ -34,6 +34,13 @@ var (
 
 type cleanseFn func(string) string
 
+func isAllNamespace(ns string) bool {
+	if ns == resource.AllNamespace || ns == resource.AllNamespaces {
+		return true
+	}
+	return false
+}
+
 func trimCellRelative(tv *tableView, row, col int) string {
 	return trimCell(tv, row, tv.nameColIndex()+col)
 }

@@ -127,6 +127,14 @@ func (v *resTable) nameColIndex() int {
 	return col
 }
 
+func (v *resTable) showNSBindings(h actionHandler) {
+	if isAllNamespace(v.currentNS) {
+		v.actions[KeyShiftP] = newKeyAction("Sort Namespace", h, true)
+		return
+	}
+	delete(v.actions, KeyShiftP)
+}
+
 func (v *resTable) saveCmd(evt *tcell.EventKey) *tcell.EventKey {
 	if path, err := saveTable(v.app.config.K9s.CurrentCluster, v.baseTitle, v.data); err != nil {
 		v.app.flash().err(err)
