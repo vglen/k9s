@@ -121,7 +121,6 @@ func (v *logView) keyboard(evt *tcell.EventKey) *tcell.EventKey {
 
 func (v *logView) logLine(line string) {
 	fmt.Fprintln(v.ansiWriter, tview.Escape(line))
-	log.Debug().Msgf("LOG LINES %d", v.logs.GetLineCount())
 }
 
 func (v *logView) flush(index int, buff []string) {

@@ -57,17 +57,27 @@ func (v *tableView) bindKeys() {
 	}
 }
 
-func (v *tableView) keyboard(evt *tcell.EventKey) *tcell.EventKey {
+func (v *tableView) handleInput(evt *tcell.EventKey) tcell.Key {
 	key := evt.Key()
-	if key == tcell.KeyRune {
-		if v.cmdBuff.isActive() {
-			v.cmdBuff.add(evt.Rune())
-			v.clearSelection()
-			v.doUpdate(v.filtered())
-			v.selectFirstRow()
-			return nil
-		}
-		key = asKey(evt)
+	if key != tcell.KeyRune {
+		return key
+	}
+
+	if !v.cmdBuff.isActive() {
+		return asKey(evt)
+	}
+	v.cmdBuff.add(evt.Rune())
+	v.clearSelection()
+	v.doUpdate(v.filtered())
+	v.selectFirstRow()
+
+	return tcell.KeyNUL
+}
+
+func (v *tableView) keyboard(evt *tcell.EventKey) *tcell.EventKey {
+	key := v.handleInput(evt)
+	if key == tcell.KeyNUL {
+		return nil
 	}
 
 	if a, ok := v.actions[key]; ok {
@@ -158,22 +168,29 @@ func (v *tableView) refresh() {
 	v.update(v.data)
 }
 
+func (v *tableView) showNSBindings() {
+	if isAllNamespace(v.currentNS) {
+		v.actions[KeyShiftP] = newKeyAction("Sort Namespace", v.sortColCmd(0), true)
+		return
+	}
+	delete(v.actions, KeyShiftP)
+}
+
 // Update table content
 func (v *tableView) update(data resource.TableData) {
-	v.data = data
-	if !v.cmdBuff.empty() {
-		v.doUpdate(v.filtered())
-	} else {
-		v.doUpdate(v.data)
-	}
+	v.currentNS, v.data = data.Namespace, data
+	v.showNSBindings()
+	v.Clear()
 	v.resetTitle()
+
+	if v.cmdBuff.empty() || isLabelSelector(v.cmdBuff.String()) {
+		v.doUpdate(v.data)
+		return
+	}
+	v.doUpdate(v.filtered())
 }
 
 func (v *tableView) filtered() resource.TableData {
-	if v.cmdBuff.empty() || isLabelSelector(v.cmdBuff.String()) {
-		return v.data
-	}
-
 	rx, err := regexp.Compile(`(?i)` + v.cmdBuff.String())
 	if err != nil {
 		v.app.flash().err(errors.New("Invalid filter expression"))
@@ -187,8 +204,7 @@ func (v *tableView) filtered() resource.TableData {
 		Namespace: v.data.Namespace,
 	}
 	for k, row := range v.data.Rows {
-		f := strings.Join(row.Fields, " ")
-		if rx.MatchString(f) {
+		if rx.MatchString(strings.Join(row.Fields, " ")) {
 			filtered.Rows[k] = row
 		}
 	}
@@ -212,14 +228,6 @@ func (v *tableView) adjustSorter(data resource.TableData) {
 }
 
 func (v *tableView) doUpdate(data resource.TableData) {
-	v.currentNS = data.Namespace
-	if v.currentNS == resource.AllNamespaces && v.currentNS != "*" {
-		v.actions[KeyShiftP] = newKeyAction("Sort Namespace", v.sortColCmd(0), true)
-	} else {
-		delete(v.actions, KeyShiftP)
-	}
-	v.Clear()
-
 	v.adjustSorter(data)
 
 	var row int
@@ -263,29 +271,36 @@ func (v *tableView) addHeaderCell(numerical bool, col int, name string) {
 }
 
 func (v *tableView) resetTitle() {
-	var title string
+	rc := len(v.data.Rows)
 
-	rc := v.GetRowCount()
-	if rc > 0 {
-		rc--
-	}
+	var title string
 	switch v.currentNS {
 	case resource.NotNamespaced, "*":
 		title = skinTitle(fmt.Sprintf(titleFmt, v.baseTitle, rc), v.app.styles.Frame())
+	case resource.AllNamespace:
+	case resource.AllNamespaces:
+		title = skinTitle(fmt.Sprintf(nsTitleFmt, v.baseTitle, resource.AllNamespace, rc), v.app.styles.Frame())
 	default:
-		ns := v.currentNS
-		if ns == resource.AllNamespaces {
-			ns = resource.AllNamespace
-		}
-		title = skinTitle(fmt.Sprintf(nsTitleFmt, v.baseTitle, ns, rc), v.app.styles.Frame())
+		title = skinTitle(fmt.Sprintf(nsTitleFmt, v.baseTitle, v.currentNS, rc), v.app.styles.Frame())
 	}
 
 	if !v.cmdBuff.isActive() && !v.cmdBuff.empty() {
-		cmd := v.cmdBuff.String()
-		if isLabelSelector(cmd) {
-			cmd = trimLabelSelector(cmd)
-		}
-		title += skinTitle(fmt.Sprintf(searchFmt, cmd), v.app.styles.Frame())
+		title += skinTitle(fmt.Sprintf(searchFmt, v.filterAsStr()), v.app.styles.Frame())
 	}
 	v.SetTitle(title)
+}
+
+func (v *tableView) filterAsStr() string {
+	cmd := v.cmdBuff.String()
+	if isLabelSelector(cmd) {
+		cmd = trimLabelSelector(cmd)
+	}
+	return cmd
+}
+
+func isAllNamespace(ns string) bool {
+	if ns == resource.AllNamespace || ns == resource.AllNamespaces {
+		return true
+	}
+	return false
 }

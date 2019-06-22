@@ -142,7 +142,6 @@ func updateLogs(c <-chan string, l *logView, buffSize int) {
 				l.flush(index, buff)
 				return
 			}
-			log.Debug().Msgf("Got line %s", line)
 			if index < buffSize {
 				buff[index] = line
 				index++
