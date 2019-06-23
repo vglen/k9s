@@ -215,7 +215,6 @@ func (v *tableView) adjustSorter(data resource.TableData) {
 func (v *tableView) doUpdate(data resource.TableData) {
 	v.adjustSorter(data)
 
-	var row int
 	fg := config.AsColor(v.app.styles.Table().Header.FgColor)
 	bg := config.AsColor(v.app.styles.Table().Header.BgColor)
 	for col, h := range data.Header {
@@ -224,12 +223,10 @@ func (v *tableView) doUpdate(data resource.TableData) {
 		c.SetBackgroundColor(bg)
 		c.SetTextColor(fg)
 	}
-	row++
-
-	v.sort(data, row)
+	v.sort(data)
 }
 
-func (v *tableView) sort(data resource.TableData, row int) {
+func (v *tableView) sort(data resource.TableData) {
 	pads := make(maxyPad, len(data.Header))
 	computeMaxColumns(pads, v.sortCol.index, data)
 
@@ -238,6 +235,7 @@ func (v *tableView) sort(data resource.TableData, row int) {
 		sortFn = v.sortFn
 	}
 	prim, sec := sortAllRows(v.sortCol, data.Rows, sortFn)
+	row := 1
 	for _, pk := range prim {
 		for _, sk := range sec[pk] {
 			v.buildRow(row, data, sk, pads)
@@ -260,7 +258,7 @@ func (v *tableView) resetTitle() {
 
 	var title string
 	switch v.currentNS {
-	case resource.NotNamespaced, "*":
+	case resource.NotNamespaced, rbacNS:
 		title = skinTitle(fmt.Sprintf(titleFmt, v.baseTitle, rc), v.app.styles.Frame())
 	case resource.AllNamespace:
 	case resource.AllNamespaces:

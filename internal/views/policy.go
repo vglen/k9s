@@ -138,7 +138,6 @@ func (v *policyView) reconcile() (resource.TableData, error) {
 		}
 		return table, errs[0]
 	}
-
 	for k, v := range nevts {
 		evts[k] = v
 	}
@@ -252,11 +251,11 @@ func (v *policyView) parseRules(ns, binding string, rules []rbacv1.PolicyRule) r
 				for _, na := range r.ResourceNames {
 					n := fqn(k, na)
 					m[fqn(ns, n)] = &resource.RowEvent{
-						Fields: append(policyRow(ns, n, grp, binding), r.Verbs...),
+						Fields: append(policyRow(ns, n, grp, binding), asVerbs(r.Verbs...)...),
 					}
 				}
 				m[fqn(ns, k)] = &resource.RowEvent{
-					Fields: append(policyRow(ns, k, grp, binding), r.Verbs...),
+					Fields: append(policyRow(ns, k, grp, binding), asVerbs(r.Verbs...)...),
 				}
 			}
 		}
@@ -265,7 +264,7 @@ func (v *policyView) parseRules(ns, binding string, rules []rbacv1.PolicyRule) r
 				nres = "/" + nres
 			}
 			m[fqn(ns, nres)] = &resource.RowEvent{
-				Fields: append(policyRow(ns, nres, resource.NAValue, binding), r.Verbs...),
+				Fields: append(policyRow(ns, nres, resource.NAValue, binding), asVerbs(r.Verbs...)...),
 			}
 		}
 	}

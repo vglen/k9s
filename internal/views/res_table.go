@@ -55,11 +55,9 @@ func (v *resTable) buildRow(row int, data resource.TableData, sk string, pads ma
 		header := data.Header[col]
 		field, align := v.formatCell(data.NumCols[header], header, field+deltas(data.Rows[sk].Deltas[col], field), pads[col])
 		c := tview.NewTableCell(field)
-		{
-			c.SetExpansion(1)
-			c.SetAlign(align)
-			c.SetTextColor(f(data.Namespace, data.Rows[sk]))
-		}
+		c.SetExpansion(1)
+		c.SetAlign(align)
+		c.SetTextColor(f(data.Namespace, data.Rows[sk]))
 		v.SetCell(row, col, c)
 	}
 }

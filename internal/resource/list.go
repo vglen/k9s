@@ -298,12 +298,12 @@ func (l *list) Reconcile(informer *wa.Informer, path *string) error {
 }
 
 func (l *list) update(items Columnars) {
-	first := len(l.cache) == 0
+	empty := len(l.cache) == 0
 	kk := make([]string, 0, len(items))
 	for _, i := range items {
 		kk = append(kk, i.Name())
 		ff := i.Fields(l.namespace)
-		if first {
+		if empty {
 			l.cache[i.Name()] = newRowEvent(New, ff, make(Row, len(ff)))
 			continue
 		}
@@ -315,7 +315,7 @@ func (l *list) update(items Columnars) {
 		l.cache[i.Name()] = newRowEvent(a, ff, dd)
 	}
 
-	if first {
+	if empty {
 		return
 	}
 	l.ensureDeletes(kk)

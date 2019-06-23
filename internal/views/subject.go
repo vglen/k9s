@@ -13,6 +13,12 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
+const (
+	rbacNS = "*"
+	rb     = "RoleBinding"
+	crb    = "CluterRoleBinding"
+)
+
 var subjectHeader = resource.Row{"NAME", "KIND", "FIRST LOCATION"}
 
 type (
@@ -35,17 +41,14 @@ type (
 
 func newSubjectView(ns string, app *appView, list resource.List) resourceViewer {
 	v := subjectView{}
-	{
-		v.tableView = newTableView(app, v.getTitle())
-		v.tableView.SetSelectionChangedFunc(v.selChanged)
-		v.colorerFn = rbacColorer
-		v.bindKeys()
-	}
+	v.tableView = newTableView(app, v.getTitle())
+	v.tableView.SetSelectionChangedFunc(v.selChanged)
+	v.colorerFn = rbacColorer
+	v.bindKeys()
 
+	v.current = &v
 	if current, ok := app.content.GetPrimitive("main").(igniter); ok {
 		v.current = current
-	} else {
-		v.current = &v
 	}
 
 	return &v
@@ -61,23 +64,25 @@ func (v *subjectView) init(c context.Context, _ string) {
 	v.subjectKind = mapCmdSubject(v.app.config.K9s.ActiveCluster().View.Active)
 	v.baseTitle = v.getTitle()
 
-	ctx, cancel := context.WithCancel(c)
-	v.cancel = cancel
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Debug().Msgf("Subject:%s Watch bailing out!", v.subjectKind)
-				return
-			case <-time.After(time.Duration(v.app.config.K9s.RefreshRate) * time.Second):
-				v.refresh()
-				v.app.Draw()
-			}
-		}
-	}(ctx)
+	var ctx context.Context
+	ctx, v.cancel = context.WithCancel(c)
+	go v.watch(ctx)
 
 	v.refresh()
 	v.app.SetFocus(v)
+}
+
+func (v *subjectView) watch(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			log.Debug().Msgf("Subject:%s Watch bailing out!", v.subjectKind)
+			return
+		case <-time.After(time.Duration(v.app.config.K9s.RefreshRate) * time.Second):
+			v.refresh()
+			v.app.Draw()
+		}
+	}
 }
 
 func (v *subjectView) setExtraActionsFn(f actionsFn) {}
@@ -86,11 +91,10 @@ func (v *subjectView) setEnterFn(f enterFn)          {}
 func (v *subjectView) setDecorateFn(f decorateFn)    {}
 
 func (v *subjectView) bindKeys() {
-	// No time data or ns
 	delete(v.actions, KeyShiftA)
 	delete(v.actions, KeyShiftP)
 
-	v.actions[tcell.KeyEnter] = newKeyAction("RBAC", v.rbackCmd, true)
+	v.actions[tcell.KeyEnter] = newKeyAction("RBAC", v.enterCmd, true)
 	v.actions[tcell.KeyEscape] = newKeyAction("Reset", v.resetCmd, false)
 	v.actions[KeySlash] = newKeyAction("Filter", v.activateCmd, false)
 	v.actions[KeyP] = newKeyAction("Previous", v.app.prevCmd, false)
@@ -116,12 +120,12 @@ func (v *subjectView) SetSubject(s string) {
 func (v *subjectView) refresh() {
 	data, err := v.reconcile()
 	if err != nil {
-		log.Error().Err(err).Msgf("Unable to reconcile for %s", v.subjectKind)
+		log.Error().Err(err).Msgf("Reconcile failed for %s", v.subjectKind)
 	}
 	v.update(data)
 }
 
-func (v *subjectView) rbackCmd(evt *tcell.EventKey) *tcell.EventKey {
+func (v *subjectView) enterCmd(evt *tcell.EventKey) *tcell.EventKey {
 	if v.selectedItem == "" {
 		return evt
 	}
@@ -129,7 +133,6 @@ func (v *subjectView) rbackCmd(evt *tcell.EventKey) *tcell.EventKey {
 	if v.cancel != nil {
 		v.cancel()
 	}
-
 	_, n := namespaced(v.selectedItem)
 	v.app.inject(newPolicyView(v.app, mapFuSubject(v.subjectKind), n))
 
@@ -165,16 +168,14 @@ func (v *subjectView) hints() hints {
 }
 
 func (v *subjectView) reconcile() (resource.TableData, error) {
-	var table resource.TableData
-
 	evts, err := v.clusterSubjects()
 	if err != nil {
-		return table, err
+		return resource.TableData{}, err
 	}
 
 	nevts, err := v.namespacedSubjects()
 	if err != nil {
-		return table, err
+		return resource.TableData{}, err
 	}
 	for k, v := range nevts {
 		evts[k] = v
@@ -195,57 +196,58 @@ func (v *subjectView) setCache(evts resource.RowEvents) {
 	v.cache = evts
 }
 
-func buildTable(c cachedEventer, evts resource.RowEvents) resource.TableData {
-	table := resource.TableData{
+// ----------------------------------------------------------------------------
+// Helpers...
+
+func buildHead(c cachedEventer, evts resource.RowEvents) resource.TableData {
+	return resource.TableData{
 		Header:    c.header(),
 		Rows:      make(resource.RowEvents, len(evts)),
-		Namespace: "*",
+		Namespace: rbacNS,
 	}
+}
 
-	noDeltas := make(resource.Row, len(c.header()))
-	cache := c.getCache()
-	if len(cache) == 0 {
-		for k, ev := range evts {
-			ev.Action = resource.New
-			ev.Deltas = noDeltas
-			table.Rows[k] = ev
-		}
-		c.setCache(evts)
-		return table
-	}
-
+func buildTable(c cachedEventer, evts resource.RowEvents) resource.TableData {
+	newData, cache := buildHead(c, evts), c.getCache()
+	empty := len(cache) == 0
 	for k, ev := range evts {
-		table.Rows[k] = ev
-
-		newr := ev.Fields
-		if _, ok := cache[k]; !ok {
-			ev.Action, ev.Deltas = watch.Added, noDeltas
+		newData.Rows[k] = ev
+		ev.Action, ev.Deltas = resource.New, make(resource.Row, len(c.header()))
+		if empty {
 			continue
 		}
-		oldr := cache[k].Fields
-		deltas := make(resource.Row, len(newr))
-		if !reflect.DeepEqual(oldr, newr) {
-			ev.Action = watch.Modified
-			for i, field := range oldr {
-				if field != newr[i] {
-					deltas[i] = field
-				}
-			}
-			ev.Deltas = deltas
-		} else {
-			ev.Action = resource.Unchanged
-			ev.Deltas = noDeltas
+		if _, ok := cache[k]; !ok {
+			ev.Action = watch.Added
+			continue
 		}
+		computeDeltas(ev, cache[k].Fields, ev.Fields)
+	}
+	ensureDeletes(newData, evts)
+	c.setCache(evts)
+
+	return newData
+}
+
+func computeDeltas(ev *resource.RowEvent, oldr, newr resource.Row) {
+	if reflect.DeepEqual(oldr, newr) {
+		ev.Action = resource.Unchanged
+		return
 	}
 
+	ev.Action = watch.Modified
+	for col, field := range oldr {
+		if field != newr[col] {
+			ev.Deltas[col] = field
+		}
+	}
+}
+
+func ensureDeletes(table resource.TableData, evts resource.RowEvents) {
 	for k := range evts {
 		if _, ok := table.Rows[k]; !ok {
 			delete(evts, k)
 		}
 	}
-	c.setCache(evts)
-
-	return table
 }
 
 func (v *subjectView) clusterSubjects() (resource.RowEvents, error) {
@@ -257,11 +259,8 @@ func (v *subjectView) clusterSubjects() (resource.RowEvents, error) {
 	evts := make(resource.RowEvents, len(crbs.Items))
 	for _, crb := range crbs.Items {
 		for _, s := range crb.Subjects {
-			if s.Kind != v.subjectKind {
-				continue
-			}
-			evts[s.Name] = &resource.RowEvent{
-				Fields: resource.Row{s.Name, "ClusterRoleBinding", crb.Name},
+			if s.Kind == v.subjectKind {
+				evts[s.Name] = &resource.RowEvent{Fields: resource.Row{s.Name, "ClusterRoleBinding", crb.Name}}
 			}
 		}
 	}
@@ -279,9 +278,7 @@ func (v *subjectView) namespacedSubjects() (resource.RowEvents, error) {
 	for _, rb := range rbs.Items {
 		for _, s := range rb.Subjects {
 			if s.Kind == v.subjectKind {
-				evts[s.Name] = &resource.RowEvent{
-					Fields: resource.Row{s.Name, "RoleBinding", rb.Name},
-				}
+				evts[s.Name] = &resource.RowEvent{Fields: resource.Row{s.Name, "RoleBinding", rb.Name}}
 			}
 		}
 	}
