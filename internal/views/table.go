@@ -124,9 +124,12 @@ func (v *tableView) resetCmd(evt *tcell.EventKey) *tcell.EventKey {
 
 func (v *tableView) sortColCmd(col int) func(evt *tcell.EventKey) *tcell.EventKey {
 	return func(evt *tcell.EventKey) *tcell.EventKey {
-		if col == -1 {
+		switch col {
+		case -2:
+			v.sortCol.index, v.sortCol.asc = 0, true
+		case -1:
 			v.sortCol.index, v.sortCol.asc = v.GetColumnCount()-1, true
-		} else {
+		default:
 			v.sortCol.index, v.sortCol.asc = v.nameColIndex()+col, true
 		}
 		v.refresh()
@@ -164,7 +167,7 @@ func (v *tableView) refresh() {
 // Update table content
 func (v *tableView) update(data resource.TableData) {
 	v.currentNS, v.data = data.Namespace, data
-	v.showNSBindings(v.sortColCmd(0))
+	v.showNSBindings(v.sortColCmd(-2))
 	v.Clear()
 	v.resetTitle()
 

@@ -336,101 +336,29 @@ func initKeys() {
 }
 
 func initNumbKeys() {
-	tcell.KeyNames[tcell.Key(Key0)] = "0"
-	tcell.KeyNames[tcell.Key(Key1)] = "1"
-	tcell.KeyNames[tcell.Key(Key2)] = "2"
-	tcell.KeyNames[tcell.Key(Key3)] = "3"
-	tcell.KeyNames[tcell.Key(Key4)] = "4"
-	tcell.KeyNames[tcell.Key(Key5)] = "5"
-	tcell.KeyNames[tcell.Key(Key6)] = "6"
-	tcell.KeyNames[tcell.Key(Key7)] = "7"
-	tcell.KeyNames[tcell.Key(Key8)] = "8"
-	tcell.KeyNames[tcell.Key(Key9)] = "9"
+	for i := 0; i < 10; i++ {
+		r := int(Key0) + i
+		tcell.KeyNames[tcell.Key(48+i)] = string(r)
+	}
 }
 
 func initStdKeys() {
-	tcell.KeyNames[tcell.Key(KeyA)] = "a"
-	tcell.KeyNames[tcell.Key(KeyB)] = "b"
-	tcell.KeyNames[tcell.Key(KeyC)] = "c"
-	tcell.KeyNames[tcell.Key(KeyD)] = "d"
-	tcell.KeyNames[tcell.Key(KeyE)] = "e"
-	tcell.KeyNames[tcell.Key(KeyF)] = "f"
-	tcell.KeyNames[tcell.Key(KeyG)] = "g"
-	tcell.KeyNames[tcell.Key(KeyH)] = "h"
-	tcell.KeyNames[tcell.Key(KeyI)] = "i"
-	tcell.KeyNames[tcell.Key(KeyJ)] = "j"
-	tcell.KeyNames[tcell.Key(KeyK)] = "k"
-	tcell.KeyNames[tcell.Key(KeyL)] = "l"
-	tcell.KeyNames[tcell.Key(KeyM)] = "m"
-	tcell.KeyNames[tcell.Key(KeyN)] = "n"
-	tcell.KeyNames[tcell.Key(KeyO)] = "o"
-	tcell.KeyNames[tcell.Key(KeyP)] = "p"
-	tcell.KeyNames[tcell.Key(KeyQ)] = "q"
-	tcell.KeyNames[tcell.Key(KeyR)] = "r"
-	tcell.KeyNames[tcell.Key(KeyS)] = "s"
-	tcell.KeyNames[tcell.Key(KeyT)] = "t"
-	tcell.KeyNames[tcell.Key(KeyU)] = "u"
-	tcell.KeyNames[tcell.Key(KeyV)] = "v"
-	tcell.KeyNames[tcell.Key(KeyW)] = "w"
-	tcell.KeyNames[tcell.Key(KeyX)] = "x"
-	tcell.KeyNames[tcell.Key(KeyY)] = "y"
-	tcell.KeyNames[tcell.Key(KeyZ)] = "z"
+	for i := 0; i < 27; i++ {
+		r := int(KeyA) + i
+		tcell.KeyNames[tcell.Key(r)] = string(r)
+	}
 }
 
 func initShiftKeys() {
-	tcell.KeyNames[tcell.Key(KeyShiftA)] = "SHIFT-A"
-	tcell.KeyNames[tcell.Key(KeyShiftB)] = "SHIFT-B"
-	tcell.KeyNames[tcell.Key(KeyShiftC)] = "SHIFT-C"
-	tcell.KeyNames[tcell.Key(KeyShiftD)] = "SHIFT-D"
-	tcell.KeyNames[tcell.Key(KeyShiftE)] = "SHIFT-E"
-	tcell.KeyNames[tcell.Key(KeyShiftF)] = "SHIFT-F"
-	tcell.KeyNames[tcell.Key(KeyShiftG)] = "SHIFT-G"
-	tcell.KeyNames[tcell.Key(KeyShiftH)] = "SHIFT-H"
-	tcell.KeyNames[tcell.Key(KeyShiftI)] = "SHIFT-I"
-	tcell.KeyNames[tcell.Key(KeyShiftJ)] = "SHIFT-J"
-	tcell.KeyNames[tcell.Key(KeyShiftK)] = "SHIFT-K"
-	tcell.KeyNames[tcell.Key(KeyShiftL)] = "SHIFT-L"
-	tcell.KeyNames[tcell.Key(KeyShiftM)] = "SHIFT-M"
-	tcell.KeyNames[tcell.Key(KeyShiftN)] = "SHIFT-N"
-	tcell.KeyNames[tcell.Key(KeyShiftO)] = "SHIFT-O"
-	tcell.KeyNames[tcell.Key(KeyShiftP)] = "SHIFT-P"
-	tcell.KeyNames[tcell.Key(KeyShiftQ)] = "SHIFT-Q"
-	tcell.KeyNames[tcell.Key(KeyShiftR)] = "SHIFT-R"
-	tcell.KeyNames[tcell.Key(KeyShiftS)] = "SHIFT-S"
-	tcell.KeyNames[tcell.Key(KeyShiftT)] = "SHIFT-T"
-	tcell.KeyNames[tcell.Key(KeyShiftU)] = "SHIFT-U"
-	tcell.KeyNames[tcell.Key(KeyShiftV)] = "SHIFT-V"
-	tcell.KeyNames[tcell.Key(KeyShiftW)] = "SHIFT-W"
-	tcell.KeyNames[tcell.Key(KeyShiftX)] = "SHIFT-X"
-	tcell.KeyNames[tcell.Key(KeyShiftY)] = "SHIFT-Y"
-	tcell.KeyNames[tcell.Key(KeyShiftZ)] = "SHIFT-Z"
+	for i := 0; i < 27; i++ {
+		r := int(KeyShiftA) + i
+		tcell.KeyNames[tcell.Key(r)] = "SHIFT-" + string(int(KeyA)+i)
+	}
 }
 
 func initAltKeys() {
-	tcell.KeyNames[tcell.Key(KeyAltA)] = "ALT-A"
-	tcell.KeyNames[tcell.Key(KeyAltB)] = "ALT-B"
-	tcell.KeyNames[tcell.Key(KeyAltC)] = "ALT-C"
-	tcell.KeyNames[tcell.Key(KeyAltD)] = "ALT-D"
-	tcell.KeyNames[tcell.Key(KeyAltE)] = "ALT-E"
-	tcell.KeyNames[tcell.Key(KeyAltF)] = "ALT-F"
-	tcell.KeyNames[tcell.Key(KeyAltG)] = "ALT-G"
-	tcell.KeyNames[tcell.Key(KeyAltH)] = "ALT-H"
-	tcell.KeyNames[tcell.Key(KeyAltI)] = "ALT-I"
-	tcell.KeyNames[tcell.Key(KeyAltJ)] = "ALT-J"
-	tcell.KeyNames[tcell.Key(KeyAltK)] = "ALT-K"
-	tcell.KeyNames[tcell.Key(KeyAltL)] = "ALT-L"
-	tcell.KeyNames[tcell.Key(KeyAltM)] = "ALT-M"
-	tcell.KeyNames[tcell.Key(KeyAltN)] = "ALT-N"
-	tcell.KeyNames[tcell.Key(KeyAltO)] = "ALT-O"
-	tcell.KeyNames[tcell.Key(KeyAltP)] = "ALT-P"
-	tcell.KeyNames[tcell.Key(KeyAltQ)] = "ALT-Q"
-	tcell.KeyNames[tcell.Key(KeyAltR)] = "ALT-R"
-	tcell.KeyNames[tcell.Key(KeyAltS)] = "ALT-S"
-	tcell.KeyNames[tcell.Key(KeyAltT)] = "ALT-T"
-	tcell.KeyNames[tcell.Key(KeyAltU)] = "ALT-U"
-	tcell.KeyNames[tcell.Key(KeyAltV)] = "ALT-V"
-	tcell.KeyNames[tcell.Key(KeyAltW)] = "ALT-W"
-	tcell.KeyNames[tcell.Key(KeyAltX)] = "ALT-X"
-	tcell.KeyNames[tcell.Key(KeyAltY)] = "ALT-Y"
-	tcell.KeyNames[tcell.Key(KeyAltZ)] = "ALT-Z"
+	for i := 0; i < 27; i++ {
+		r := 4 * (int(KeyA) + i)
+		tcell.KeyNames[tcell.Key(r)] = "ALT-" + string(int(KeyA)+i)
+	}
 }
