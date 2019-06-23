@@ -56,8 +56,7 @@ func (v *forwardView) setExtraActionsFn(actionsFn) {}
 
 // Init the view.
 func (v *forwardView) init(ctx context.Context, _ string) {
-	path := benchConfig(v.app.config.K9s.CurrentCluster)
-	if err := watchFS(ctx, v.app, config.K9sHome, path, v.reload); err != nil {
+	if err := watchK9sDir(ctx, v.app, v.reload); err != nil {
 		v.app.flash().errf("RuRoh! Unable to watch benchmarks directory %s : %s", config.K9sHome, err)
 	}
 
@@ -339,35 +338,36 @@ func dismissModal(pv *tview.Pages, page string) {
 	pv.SwitchToPage(page)
 }
 
-func watchFS(ctx context.Context, app *appView, dir, file string, cb func()) error {
+func watchK9sDir(ctx context.Context, app *appView, cb func()) error {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
+	go updateBenchConfig(ctx, w, app, cb)
 
-	go func() {
-		for {
-			select {
-			case evt := <-w.Events:
-				log.Debug().Msgf("FS %s event %v", file, evt.Name)
-				if file == "" || evt.Name == file {
-					log.Debug().Msgf("Capuring Event %#v", evt)
-					app.QueueUpdateDraw(func() {
-						cb()
-					})
-				}
-			case err := <-w.Errors:
-				log.Info().Err(err).Msgf("FS %s watcher failed", dir)
-				return
-			case <-ctx.Done():
-				log.Debug().Msgf("<<FS %s WATCHER DONE>>", dir)
-				w.Close()
-				return
+	return w.Add(config.K9sHome)
+}
+
+func updateBenchConfig(ctx context.Context, w *fsnotify.Watcher, app *appView, cb func()) {
+	file := benchConfig(app.config.K9s.CurrentCluster)
+	for {
+		select {
+		case evt := <-w.Events:
+			if file == "" || evt.Name == file {
+				log.Debug().Msgf("Capuring Event %#v", evt)
+				app.QueueUpdateDraw(func() {
+					cb()
+				})
 			}
+		case err := <-w.Errors:
+			log.Info().Err(err).Msgf("FS %s watcher failed", file)
+			return
+		case <-ctx.Done():
+			log.Debug().Msgf("<<FS %s WATCHER DONE>>", file)
+			w.Close()
+			return
 		}
-	}()
-
-	return w.Add(dir)
+	}
 }
 
 func benchConfig(cluster string) string {

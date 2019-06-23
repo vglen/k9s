@@ -3,7 +3,6 @@ package views
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/derailed/k9s/internal/resource"
 	"github.com/derailed/k9s/internal/watch"
@@ -13,10 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	containerFmt = "[fg:bg:b]%s([hilite:bg:b]%s[fg:bg:-])"
-	shellCheck   = "command -v bash >/dev/null && exec bash || exec sh"
-)
+const shellCheck = "command -v bash >/dev/null && exec bash || exec sh"
 
 type podView struct {
 	*resourceView
@@ -78,16 +74,14 @@ func (v *podView) listContainers(app *appView, _, res, sel string) {
 	}
 
 	pod := po.(*v1.Pod)
-	list := resource.NewContainerList(app.conn(), pod)
-	title := skinTitle(fmt.Sprintf(containerFmt, "Containers", sel), app.styles.Frame())
 
 	// Stop my updater
 	if v.cancelFn != nil {
 		v.cancelFn()
 	}
 
-	// Span child view
-	cv := newContainerView(title, app, list, fqn(pod.Namespace, pod.Name), v.exitFn)
+	list := resource.NewContainerList(app.conn(), pod)
+	cv := newContainerView(app, list, sel, v.exitFn)
 	v.AddPage("containers", cv, true, true)
 	var ctx context.Context
 	ctx, v.childCancelFn = context.WithCancel(v.parentCtx)

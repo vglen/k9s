@@ -61,17 +61,20 @@ func newDetailsView(app *appView, backFn actionHandler) *detailsView {
 	v.SetChangedFunc(func() {
 		app.Draw()
 	})
-
-	v.actions = keyActions{
-		tcell.KeyBackspace2: newKeyAction("Erase", v.eraseCmd, false),
-		tcell.KeyBackspace:  newKeyAction("Erase", v.eraseCmd, false),
-		tcell.KeyDelete:     newKeyAction("Erase", v.eraseCmd, false),
-		tcell.KeyEscape:     newKeyAction("Back", v.backCmd, true),
-		tcell.KeyTab:        newKeyAction("Next Match", v.nextCmd, false),
-		tcell.KeyBacktab:    newKeyAction("Previous Match", v.prevCmd, false),
-	}
+	v.bindKeys()
 
 	return &v
+}
+
+func (v *detailsView) bindKeys() {
+	v.actions = keyActions{
+		tcell.KeyEscape:  newKeyAction("Back", v.backCmd, true),
+		tcell.KeyTab:     newKeyAction("Next Match", v.nextCmd, false),
+		tcell.KeyBacktab: newKeyAction("Previous Match", v.prevCmd, false),
+	}
+	for _, k := range []tcell.Key{tcell.KeyBackspace, tcell.KeyBackspace2, tcell.KeyDelete} {
+		v.actions[k] = newKeyAction("Erase", v.eraseCmd, false)
+	}
 }
 
 func (v *detailsView) setCategory(n string) {

@@ -12,8 +12,6 @@ import (
 type maxyPad []int
 
 func computeMaxColumns(pads maxyPad, sortCol int, table resource.TableData) {
-	const colPadding = 1
-
 	for index, h := range table.Header {
 		pads[index] = len(h)
 		if index == sortCol {
@@ -21,24 +19,29 @@ func computeMaxColumns(pads maxyPad, sortCol int, table resource.TableData) {
 		}
 	}
 
-	var row int
-	for _, rev := range table.Rows {
-		ageIndex := len(rev.Fields) - 1
-		for index, field := range rev.Fields {
-			// Date field comes out as timestamp.
-			if index == ageIndex {
-				dur, err := time.ParseDuration(field)
-				if err == nil {
-					field = duration.HumanDuration(dur)
-				}
-			}
-			width := len(field) + colPadding
-			if width > pads[index] {
-				pads[index] = width
+	row, ageIndex := 0, len(table.Header)-1
+	for _, res := range table.Rows {
+		for index, field := range res.Fields {
+			w := fieldWidth(field, index, ageIndex)
+			if w > pads[index] {
+				pads[index] = w
 			}
 		}
 		row++
 	}
+}
+
+const colPadding = 1
+
+func fieldWidth(f string, col, ageIndex int) int {
+	// Date field comes out as timestamp.
+	if col == ageIndex {
+		dur, err := time.ParseDuration(f)
+		if err == nil {
+			f = duration.HumanDuration(dur)
+		}
+	}
+	return len(f) + colPadding
 }
 
 func isASCII(s string) bool {

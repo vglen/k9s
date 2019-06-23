@@ -14,6 +14,8 @@ import (
 	"k8s.io/client-go/tools/portforward"
 )
 
+const containerFmt = "[fg:bg:b]%s([hilite:bg:b]%s[fg:bg:-])"
+
 type containerView struct {
 	*logResourceView
 
@@ -21,14 +23,18 @@ type containerView struct {
 	exitFn  func()
 }
 
-func newContainerView(ns string, app *appView, list resource.List, path string, exitFn func()) resourceViewer {
-	v := containerView{logResourceView: newLogResourceView(ns, app, list)}
+func newContainerView(app *appView, list resource.List, path string, exitFn func()) resourceViewer {
+	title := skinTitle(fmt.Sprintf(containerFmt, "Containers", path), app.styles.Frame())
+
+	v := containerView{
+		logResourceView: newLogResourceView(title, app, list),
+		exitFn:          exitFn,
+	}
 	v.path = &path
 	v.containerFn = v.selectedContainer
 	v.extraActionsFn = v.extraActions
 	v.enterFn = v.viewLogs
 	v.current = app.content.GetPrimitive("main").(igniter)
-	v.exitFn = exitFn
 
 	return &v
 }
