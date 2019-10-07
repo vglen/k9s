@@ -16,12 +16,7 @@ type Secret struct {
 
 // NewSecretList returns a new resource list.
 func NewSecretList(c Connection, ns string) List {
-	return NewList(
-		ns,
-		"secret",
-		NewSecret(c),
-		AllVerbsAccess|DescribeAccess,
-	)
+	return NewCustomList(c, true, ns, "v1/secrets")
 }
 
 // NewSecret instantiates a new Secret.
@@ -82,6 +77,7 @@ func (*Secret) NumCols(n string) map[string]bool {
 
 // Fields retrieves displayable fields.
 func (r *Secret) Fields(ns string) Row {
+	log.Debug().Msgf("YO!")
 	ff := make(Row, 0, len(r.Header(ns)))
 	i := r.instance
 	if ns == AllNamespaces {

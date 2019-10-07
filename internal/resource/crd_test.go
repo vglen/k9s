@@ -49,6 +49,79 @@ func TestCRDFieldsAllNS(t *testing.T) {
 	assert.Equal(t, "fred", r[0])
 }
 
+func TestCustomExtFields(t *testing.T) {
+	mc := NewMockConnection()
+
+	c := resource.NewCustomResourceDefinition(mc)
+	cust := c.New(
+		unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"name":      "fred",
+					"namespace": "blee",
+				},
+				"spec": map[string]interface{}{
+					"group":   "g1",
+					"version": "v1",
+					"scope":   "Namespaced",
+					"names": map[string]interface{}{
+						"kind":     "fred",
+						"singular": "blee",
+						"plural":   "blees",
+						"shortNames": []interface{}{
+							"s1",
+							"s2",
+						},
+					},
+				},
+			},
+		},
+	)
+
+	var m resource.TypeMeta
+	assert.Nil(t, cust.ExtFields(&m))
+	assert.Equal(t, "g1", m.Group)
+	assert.Equal(t, "fred", m.Kind)
+	assert.Equal(t, "blee", m.Singular)
+	assert.Equal(t, "blees", m.Plural)
+	assert.Equal(t, true, m.Namespaced)
+	assert.Equal(t, []string{"s1", "s2"}, m.ShortNames)
+}
+
+func BenchmarkCustomExtFields(b *testing.B) {
+	mc := NewMockConnection()
+
+	c := resource.NewCustomResourceDefinition(mc)
+	cust := c.New(
+		unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"name":      "fred",
+					"namespace": "blee",
+				},
+				"spec": map[string]interface{}{
+					"group":   "g1",
+					"version": "v1",
+					"scope":   "Namespaced",
+					"names": map[string]interface{}{
+						"kind":     "fred",
+						"singular": "blee",
+						"plural":   "blees",
+						"shortNames": []interface{}{
+							"s1",
+							"s2",
+						},
+					},
+				},
+			},
+		},
+	)
+	var m resource.TypeMeta
+	for i := 0; i < b.N; i++ {
+		_ = cust.ExtFields(&m)
+	}
+}
+
 func TestCRDMarshal(t *testing.T) {
 	mc := NewMockConnection()
 	cr := NewMockCruder()

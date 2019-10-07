@@ -81,8 +81,8 @@ func (c *command) isK9sCmd(cmd string) bool {
 // load scrape api for resources and populate aliases.
 func (c *command) load() viewers {
 	vv := make(viewers, 100)
-	resourceViews(c.app.Conn(), vv)
 	allCRDs(c.app.Conn(), vv)
+	resourceViews(c.app.Conn(), vv)
 
 	return vv
 }

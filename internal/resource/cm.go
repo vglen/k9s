@@ -16,12 +16,7 @@ type ConfigMap struct {
 
 // NewConfigMapList returns a new resource list.
 func NewConfigMapList(c Connection, ns string) List {
-	return NewList(
-		ns,
-		"cm",
-		NewConfigMap(c),
-		AllVerbsAccess|DescribeAccess,
-	)
+	return NewCustomList(c, true, ns, "v1/configmaps")
 }
 
 // NewConfigMap instantiates a new ConfigMap.

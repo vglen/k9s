@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/derailed/k9s/internal/k8s"
 	"github.com/rs/zerolog/log"
@@ -90,6 +91,10 @@ func (r *Custom) Marshal(path string) (string, error) {
 
 // List all resources
 func (r *Custom) List(ns string) (Columnars, error) {
+	defer func(t time.Time) {
+		log.Debug().Msgf("Elapsed List %v", time.Since(t))
+	}(time.Now())
+
 	ii, err := r.Resource.List(ns)
 	if err != nil {
 		return nil, err
@@ -140,13 +145,9 @@ func (r *Custom) Fields(ns string) Row {
 
 	meta := obj["metadata"].(map[string]interface{})
 	rns, ok := meta["namespace"].(string)
-
-	if ns == AllNamespaces {
-		if ok {
-			ff = append(ff, rns)
-		}
+	if ok && ns == AllNamespaces {
+		ff = append(ff, rns)
 	}
-
 	for _, c := range r.instance.Cells {
 		ff = append(ff, fmt.Sprintf("%v", c))
 	}

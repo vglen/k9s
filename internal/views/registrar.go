@@ -2,7 +2,6 @@ package views
 
 import (
 	"strings"
-	"time"
 
 	"github.com/derailed/k9s/internal/config"
 	"github.com/derailed/k9s/internal/k8s"
@@ -11,6 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var aliases = config.NewAliases()
 
 type (
 	viewFn     func(title, gvr string, app *appView, list resource.List) resourceViewer
@@ -39,8 +40,6 @@ func listFunc(l resource.List) viewFn {
 	}
 }
 
-var aliases = config.NewAliases()
-
 func allCRDs(c k8s.Connection, vv viewers) {
 	crds, err := resource.NewCustomResourceDefinitionList(c, resource.AllNamespaces).
 		Resource().
@@ -50,13 +49,16 @@ func allCRDs(c k8s.Connection, vv viewers) {
 		return
 	}
 
-	t := time.Now()
 	var meta resource.TypeMeta
 	for _, crd := range crds {
-		crd.ExtFields(&meta)
+		if err := crd.ExtFields(&meta); err != nil {
+			log.Error().Err(err).Msg("Loading resource")
+			continue
+		}
 
 		gvr := k8s.NewGVR(meta.Group, meta.Version, meta.Plural)
 		gvrs := gvr.String()
+
 		if meta.Plural != "" {
 			aliases.Define(meta.Plural, gvrs)
 		}
@@ -74,7 +76,61 @@ func allCRDs(c k8s.Connection, vv viewers) {
 			colorerFn: ui.DefaultColorer,
 		}
 	}
-	log.Debug().Msgf("Loading CRDS %v", time.Since(t))
+}
+
+func load(c k8s.Connection, vv viewers) {
+	if err := aliases.Load(); err != nil {
+		log.Warn().Err(err).Msg("No custom aliases defined in config")
+	}
+	discovery, err := c.CachedDiscovery()
+	if err != nil {
+		log.Error().Err(err).Msgf("Error to get discovery client")
+		return
+	}
+	rr, err := discovery.ServerPreferredResources()
+	if err != nil {
+		log.Error().Err(err).Msgf("Unable to load api server preferred resources")
+		return
+	}
+
+	for _, r := range rr {
+		for _, res := range r.APIResources {
+			gvr := k8s.ToGVR(r.GroupVersion, res.Name)
+			cmd, ok := vv[gvr.String()]
+			if !ok {
+				continue
+			}
+			gvrStr := gvr.String()
+
+			cmd.namespaced, cmd.kind = res.Namespaced, res.Kind
+			cmd.gvr, cmd.verbs = gvrStr, res.Verbs
+			vv[gvrStr] = cmd
+			aliases.Define(
+				strings.ToLower(res.Kind), gvrStr,
+				res.Name, gvrStr,
+			)
+			if len(res.SingularName) > 0 {
+				aliases.Define(res.SingularName, gvrStr)
+			}
+			for _, s := range res.ShortNames {
+				aliases.Define(s, gvrStr)
+			}
+		}
+	}
+}
+
+func resourceViews(c k8s.Connection, m viewers) {
+	coreRes(m)
+	miscRes(m)
+	appsRes(m)
+	authRes(m)
+	extRes(m)
+	netRes(m)
+	batchRes(m)
+	policyRes(m)
+	hpaRes(m)
+
+	load(c, m)
 }
 
 func showRBAC(app *appView, ns, resource, selection string) {
@@ -114,63 +170,6 @@ func showRole(app *appView, _, resource, selection string) {
 func showSAPolicy(app *appView, _, _, selection string) {
 	_, n := namespaced(selection)
 	app.inject(newPolicyView(app, mapFuSubject("ServiceAccount"), n))
-}
-
-func load(c k8s.Connection, vv viewers) {
-	if err := aliases.Load(); err != nil {
-		log.Error().Err(err).Msg("No custom aliases defined in config")
-	}
-	discovery, err := c.CachedDiscovery()
-	if err != nil {
-		log.Error().Err(err).Msgf("Error to get discovery client")
-		return
-	}
-
-	rr, _ := discovery.ServerPreferredResources()
-	for _, r := range rr {
-		for _, res := range r.APIResources {
-			gvr := k8s.ToGVR(r.GroupVersion, res.Name)
-			cmd, ok := vv[gvr.String()]
-			if !ok {
-				// log.Debug().Msgf(fmt.Sprintf(">> No viewer defined for `%s`", gvr))
-				continue
-			}
-			cmd.namespaced = res.Namespaced
-			cmd.kind = res.Kind
-			cmd.verbs = res.Verbs
-			cmd.gvr = gvr.String()
-			vv[gvr.String()] = cmd
-			gvrStr := gvr.String()
-			aliases.Define(
-				strings.ToLower(res.Kind), gvrStr,
-				res.Name, gvrStr,
-			)
-			if len(res.SingularName) > 0 {
-				aliases.Define(res.SingularName, gvrStr)
-			}
-			for _, s := range res.ShortNames {
-				aliases.Define(s, gvrStr)
-			}
-		}
-	}
-}
-
-func resourceViews(c k8s.Connection, m viewers) {
-	defer func(t time.Time) {
-		log.Debug().Msgf("Loading Views Elapsed %v", time.Since(t))
-	}(time.Now())
-
-	coreRes(m)
-	miscRes(m)
-	appsRes(m)
-	authRes(m)
-	extRes(m)
-	netRes(m)
-	batchRes(m)
-	policyRes(m)
-	hpaRes(m)
-
-	load(c, m)
 }
 
 func coreRes(vv viewers) {

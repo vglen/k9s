@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/derailed/k9s/internal/k8s"
@@ -89,7 +90,7 @@ func (r *CustomResourceDefinition) Fields(ns string) Row {
 }
 
 // ExtFields returns extended fields.
-func (r *CustomResourceDefinition) ExtFields(m *TypeMeta) {
+func (r *CustomResourceDefinition) ExtFields1(m *TypeMeta) {
 	i := r.instance
 	spec, ok := i.Object["spec"].(map[string]interface{})
 	if !ok {
@@ -116,6 +117,77 @@ func (r *CustomResourceDefinition) ExtFields(m *TypeMeta) {
 	}
 }
 
+// ExtFields returns extended fields.
+func (r *CustomResourceDefinition) ExtFields(m *TypeMeta) error {
+	i := r.instance
+	spec, ok := i.Object["spec"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Unable to locate `spec field on CRD")
+	}
+
+	meta, ok := i.Object["metadata"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Unable to locate CRD `metadata field")
+	}
+
+	var err error
+	if m.Name, err = mapStr(meta, "name"); err != nil {
+		return err
+	}
+	if m.Group, err = mapStr(spec, "group"); err != nil {
+		return err
+	}
+	if m.Version, err = mapStr(spec, "version"); err != nil {
+		return err
+	}
+	n, err := mapStr(spec, "scope")
+	if err != nil {
+		return err
+	}
+	m.Namespaced = isNamespaced(n)
+
+	names, ok := spec["names"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Unable to locate `names on CRD %s:%s", m.Group, m.Version)
+	}
+	if m.Kind, err = mapStr(names, "kind"); err != nil {
+		return err
+	}
+	if m.Singular, err = mapStr(names, "singular"); err != nil {
+		return err
+	}
+	if m.Plural, err = mapStr(names, "plural"); err != nil {
+		return err
+	}
+
+	aa, ok := names["shortNames"].([]interface{})
+	if !ok {
+		m.ShortNames = nil
+		return nil
+	}
+	for _, a := range aa {
+		if v, ok := a.(string); ok {
+			m.ShortNames = append(m.ShortNames, v)
+		}
+	}
+
+	return nil
+}
+
 func isNamespaced(scope string) bool {
 	return scope == "Namespaced"
+}
+
+func mapStr(m map[string]interface{}, s string) (string, error) {
+	f, ok := m[s]
+	if !ok {
+		return "", fmt.Errorf("Unable to locate CRD field %s", s)
+	}
+
+	v, ok := f.(string)
+	if !ok {
+		return "", fmt.Errorf("No string type for CRD field %s", s)
+	}
+
+	return v, nil
 }
